@@ -161,13 +161,15 @@ function evolve(rho, inputs, S, results_file)
     rho_list = MPO[rho]
     energy_list = ComplexF64[inner(rho, H)]
     save_steps_list = inputs["ssl"]
+    counter = 1
     link_dims_list = zeros(Int64, length(save_steps_list) + 1, length(rho)-1)
     link_dims_list[1, :] = linkdims(rho)
     greens_functions_list = zeros(ComplexF64, length(save_steps_list) + 1, div(N, 2)^2)
-    greens_functions_idxs_list = zeros(Int64, length(save_steps_list) + 1, 3)
+    greens_functions_idxs_list = zeros(Int64, length(save_steps_list) + 1, div(N, 2)^2, 3)
     greens_functions, idxs = get_greens_function_expectation_values(rho, sites)
     greens_functions_list[1, :] = greens_functions
-    greens_functions_idxs_list[1, :] = idxs
+    greens_functions_idxs_list[1, :, :] = idxs
+    counter += 1
 
     # Prepare the gates for the integration scheme: e^(-db*H_o/4)e^(-db*H_e/2)e^(-db*H_o/4) I e^(-db*H_o/4)e^(-db*H_e/2)e^(-db*H_o/4)
     delta_beta = inputs["db"]
@@ -202,12 +204,12 @@ function evolve(rho, inputs, S, results_file)
         # Write data to lists
         if step in save_steps_list
             rho_to_save = apply(hermitian_conjugate_mpo(rho), rho; cutoff = cutoff)
-            greens_functions, idxs = get_greens_function_expectation_values(rho_to_save, sites)
-            greens_functions_list[1, :] = greens_functions
-            greens_functions_idxs_list[1, :] = idxs
             push!(rho_list, rho_to_save)
             push!(beta_list, 2*current_beta)
             push!(energy_list, inner(rho_to_save, H))
+            greens_functions, idxs = get_greens_function_expectation_values(rho_to_save, sites)
+            greens_functions_list[counter, :] = greens_functions
+            greens_functions_idxs_list[counter, :, :] = idxs
             link_dims_list[counter, :] = linkdims(rho)
             counter += 1
         end
