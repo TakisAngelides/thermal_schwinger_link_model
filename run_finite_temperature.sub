@@ -2,7 +2,7 @@ environment = "JULIA_DEPOT_PATH='/lustre/fs24/group/cqta/tangelides/.julia:$JULI
 
 executable = /lustre/fs24/group/cqta/tangelides/julia-1.10.0/bin/julia
 
-arguments = /lustre/fs24/group/cqta/tangelides/thermal_schwinger_link_model/run_finite_temperature.jl $(path_to_inputs_h5) $(job_id) $(path_to_save_results_h5)
+arguments = /lustre/fs24/group/cqta/tangelides/thermal_schwinger_link_model/run_finite_temperature.jl $(path_to_inputs_h5) $(job_id)
 
 transfer_input_files = /lustre/fs24/group/cqta/tangelides/thermal_schwinger_link_model/run_finite_temperature.jl
 
