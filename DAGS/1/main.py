@@ -36,20 +36,21 @@ def write_dag():
     f_dag = open(name_of_dag, 'w')
     
     # This will contain DAGMAN_USE_DIRECT_SUBMIT = False to avoid obscure bugs of authentication
-    f_dag.write(f'CONFIG /lustre/fs24/group/cqta/tangelides/OQS/dagman.config\n')
+    f_dag.write(f'CONFIG /lustre/fs24/group/cqta/tangelides/thermal_schwinger_link_model/dagman.config\n')
     
-    # The julia file to run with the given inputs
-    file_to_run = 'run.jl'
-    
+    # The julia files to run with the given inputs
+    file_to_run_finite_temperature = 'run_finite_temperature.jl'
+    file_to_run_zero_temperature = 'run_zero_temperature.jl'
+
     # Path to submission files to run from dag
-    path_to_sub_finite_temperature = '/lustre/fs24/group/cqta/tangelides/OQS/OQS_Purified/run_finite_temperature.sub'
-    path_to_sub_zero_temperature = '/lustre/fs24/group/cqta/tangelides/OQS/OQS_Purified/run_zero_temperature.sub'
+    path_to_sub_finite_temperature = '/lustre/fs24/group/cqta/tangelides/thermal_schwinger_link_model/run_finite_temperature.sub'
+    path_to_sub_zero_temperature = '/lustre/fs24/group/cqta/tangelides/thermal_schwinger_link_model/run_zero_temperature.sub'
 
     # Project number of dag
     project_number = os.getcwd().strip().split('/')[-1]
     
     # Where to find the inputs
-    path_to_project_number = f'/lustre/fs24/group/cqta/tangelides/OQS/OQS_Purified/DAGS/{project_number}'
+    path_to_project_number = f'/lustre/fs24/group/cqta/tangelides/thermal_schwinger_link_model/DAGS/{project_number}'
     path_to_inputs_h5 = path_to_project_number + '/inputs.h5'
     f_h5 = h5py.File(path_to_inputs_h5, 'w')
         
@@ -102,7 +103,7 @@ def write_dag():
                             # Write job to dag
                             job_name = f'{job_id}'
                             f_dag.write(f'JOB ' + job_name + f' {path_to_sub_finite_temperature}\n')
-                            f_dag.write(f'VARS ' + job_name + f' job_id="{job_id}" path_to_project_number="{path_to_project_number}" file_to_run="{file_to_run}" cpu="{cpu}" mem="{mem}" days="{days}"\n')
+                            f_dag.write(f'VARS ' + job_name + f' job_id="{job_id}" path_to_project_number="{path_to_project_number}" file_to_run="{file_to_run_finite_temperature}" cpu="{cpu}" mem="{mem}" days="{days}"\n')
                             f_dag.write('RETRY ' + job_name + ' 1\n')
     
     # Zero temperature case
@@ -136,7 +137,7 @@ def write_dag():
                                     # Write job to dag
                                     job_name = f'{job_id}'
                                     f_dag.write(f'JOB ' + job_name + f' {path_to_sub_zero_temperature}\n')
-                                    f_dag.write(f'VARS ' + job_name + f' job_id="{job_id}" path_to_project_number="{path_to_project_number}" file_to_run="{file_to_run}" cpu="{cpu}" mem="{mem}" days="{days}"\n')
+                                    f_dag.write(f'VARS ' + job_name + f' job_id="{job_id}" path_to_project_number="{path_to_project_number}" file_to_run="{file_to_run_zero_temperature}" cpu="{cpu}" mem="{mem}" days="{days}"\n')
                                     f_dag.write('RETRY ' + job_name + ' 1\n')
         
     # Close the dag file and the h5 input file
