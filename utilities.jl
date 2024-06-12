@@ -1305,11 +1305,13 @@ function get_greens_function_expectation_values(gs::MPS, sites)
     n = length(gs)
     left_indices = 1:2:div(n+1, 2)
     right_indices = [n - left_idx + 1 for left_idx in left_indices] 
-    res = []
-    idxs = []
+    res = ComplexF64[]
+    idxs = zeros(Int64, length(left_indices)^2, 3)
+    counter = 1
     for left_idx in left_indices
         for right_idx in right_indices
-            push!(idxs, [left_idx, right_idx, right_idx - left_idx])
+            idxs[counter, :] = [left_idx, right_idx, right_idx - left_idx]
+            counter += 1
             push!(res, inner(gs', MPO(get_greens_function_opsum(left_idx, right_idx), sites), gs))
         end
     end
@@ -1323,11 +1325,13 @@ function get_greens_function_expectation_values(rho::MPO, sites)
     n = length(rho)
     left_indices = 1:2:div(n+1, 2)
     right_indices = [n - left_idx + 1 for left_idx in left_indices] 
-    res = []
-    idxs = []
+    res = ComplexF64[]
+    idxs = zeros(Int64, length(left_indices)^2, 3)
+    counter = 1
     for left_idx in left_indices
         for right_idx in right_indices
-            push!(idxs, [left_idx, right_idx, right_idx - left_idx])
+            idxs[counter, :] = [left_idx, right_idx, right_idx - left_idx]
+            counter += 1
             push!(res, inner(rho, MPO(get_greens_function_opsum(left_idx, right_idx), sites)))
         end
     end

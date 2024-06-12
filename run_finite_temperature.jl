@@ -151,6 +151,8 @@ flush(stdout)
 function evolve(rho, inputs, S, results_file)
     
     # Define the Hamiltonian to track the energy
+    x = inputs["x"]
+    mg = inputs["mg"]
     H = get_Hamiltonian_MPO(x, mg, sites)
 
     # List to write to file after including the states rho and corresponding beta
@@ -169,8 +171,6 @@ function evolve(rho, inputs, S, results_file)
 
     # Prepare the gates for the integration scheme: e^(-db*H_o/4)e^(-db*H_e/2)e^(-db*H_o/4) I e^(-db*H_o/4)e^(-db*H_e/2)e^(-db*H_o/4)
     delta_beta = inputs["db"]
-    x = inputs["x"]
-    mg = inputs["mg"]
     a = -delta_beta/8
     odd_gates = get_odd_gates(sites, a, x, mg, S) # odd/8
     even_gates = get_even_gates(sites, 2*a, x, mg, S) # even/4
