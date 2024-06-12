@@ -5,7 +5,7 @@ using SparseArrays
 using Plots
 using LaTeXStrings
 using Dates
-include("Utilities.jl")
+include("utilities.jl")
 ITensors.disable_warn_order()
 
 # Input arguments for file and opening the results h5 file
