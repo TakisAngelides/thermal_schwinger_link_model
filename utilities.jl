@@ -1332,16 +1332,92 @@ function get_greens_function_expectation_values(rho::MPO, sites)
     left_indices = 1:2:div(n+1, 2)
     right_indices = [n - left_idx + 1 for left_idx in left_indices] 
     res = ComplexF64[]
-    idxs = zeros(Int64, length(left_indices)^2, 3)
-    counter = 1
-    for left_idx in left_indices
-        for right_idx in right_indices
-            idxs[counter, :] = [left_idx, right_idx, right_idx - left_idx]
-            counter += 1
-            push!(res, inner(rho, MPO(get_greens_function_opsum(left_idx, right_idx), sites)))
-        end
+    idxs = Int64[]
+    for (left_idx_num, left_idx) in enumerate(left_indices)
+        right_idx = right_indices[left_idx_num]
+        push!(idxs, right_idx - left_idx)
+        opsum = get_greens_function_opsum(left_idx, right_idx)
+        greens_fn = inner(rho, MPO(opsum, sites))
+        push!(res, greens_fn)
     end
 
     return res, idxs
 
+end
+
+function convert_sample_to_strings(input_list)
+    result = String[]  # Initialize an empty array to store the result
+    
+    for i in 1:length(input_list)
+        value = input_list[i]
+        
+        if i % 2 == 1  # Odd index: Matter site
+            if i % 4 == 1  # 1-based index, 1, 5, 9, ... are odd matter sites
+                result_value = value == 1 ? "" : value == 2 ? "e" : ""
+            else  # 3, 7, 11, ... are even matter sites
+                result_value = value == 1 ? "p" : value == 2 ? "" : ""
+            end
+        else  # Even index: Link
+            result_value = value == 1 ? "1" : value == 2 ? "0" : value == 3 ? "-1" : ""
+        end
+        
+        push!(result, result_value)
+    end
+    
+    return result
+end
+
+function get_string_lengths_distribution(input_list)
+        
+    res = Dict()
+
+    p_segment = false
+    e_segment = false
+    current_length = 0
+
+    for value in input_list
+        if value == "e" 
+            if p_segment # we were in a segment that started with p and now we are closing it
+                p_segment = false
+                if haskey(res, current_length)
+                    res[current_length] += 1
+                else
+                    res[current_length] = 1
+                end
+            else # we were not in any segment and now we start a new segment which starts with e and will eventually end with p
+                e_segment = true
+                current_length = 1
+            end        
+        elseif value == "p"
+            if e_segment # we were in a segment that started with p and now we are closing it
+                e_segment = false
+                if haskey(res, current_length)
+                    res[current_length] += 1
+                else
+                    res[current_length] = 1
+                end
+            else # we were not in any segment and now we start a new segment which starts with e and will eventually end with p
+                p_segment = true
+                current_length = 1
+            end        
+        else # this is the case when we find "" instead of "p" or "e"
+            if p_segment || e_segment # if we are in a segment we increment its length otherwise we continue to the next site
+                current_length += 1
+            end
+        end
+    end
+    
+    return res
+end
+
+function get_distribution_of_lengths(state, num_samples)
+    total_dict = Dict()
+    for i in 1:num_samples
+        s = sample(state)
+        s1 = convert_sample_to_strings(s)
+        s2 = s1[1:2:end]
+        lengths = get_string_lengths_distribution(s2)
+        total_dict = mergewith(+, total_dict, lengths)
+    end
+    return total_dict
 end

@@ -19,7 +19,7 @@ println("Finished getting the input arguments for the file and opening the resul
 flush(stdout)
 
 # Build a dictionary of the inputs
-println("Now building a dictionary of the inputs", now())
+println("Now building a dictionary of the inputs ", now())
 flush(stdout)
 inputs_file = h5open(path_to_inputs_h5, "r")
 group = inputs_file["$(job_id)"]
@@ -35,18 +35,23 @@ println("Finished building a dictionary of the inputs ", now())
 flush(stdout)
 
 # Get spin S number and create operators
-println("Now getting the spin S dependent functions", now())
+println("Now getting the spin S dependent functions ", now())
 flush(stdout)
 S = inputs["S"]
 ITensors.space(::SiteType"Spin") = Int(2*S+1)
 function ITensors.op(::OpName"Sz_sp", ::SiteType"Spin", s::Index)
 
+    d = dim(s)
+    S = div(d-1, 2) 
 
     return diagm(S:-1:-S)
 
 end
 
 function ITensors.op(::OpName"Sz2_sp", ::SiteType"Spin", s::Index)
+
+    d = dim(s) 
+    S = div(d-1, 2)
     
     return diagm((S:-1:-S).^2)
 
@@ -54,6 +59,8 @@ end
 
 function ITensors.op(::OpName"Sz", ::SiteType"Spin", s::Index)
 
+    d = dim(s)
+    S = div(d-1, 2)
     tmp = diagm(S:-1:-S)
 
     return ITensor(tmp, s', dag(s))
@@ -62,6 +69,8 @@ end
 
 function ITensors.op(::OpName"Sz2", ::SiteType"Spin", s::Index)
 
+    d = dim(s) 
+    S = div(d-1, 2)
     tmp = diagm((S:-1:-S).^2)
 
     return ITensor(tmp, s', dag(s))
@@ -74,6 +83,8 @@ function ITensors.op(::OpName"S+", ::SiteType"Spin", s::Index)
     See definition: https://easyspin.org/easyspin/documentation/spinoperators.html
     """
 
+    d = dim(s) 
+    S = div(d-1, 2)
     m = zeros(Float64, d, d)
     Sz_vec = S:-1:-S
     for row in 1:d
@@ -96,6 +107,8 @@ end
 
 function ITensors.op(::OpName"S-", ::SiteType"Spin", s::Index)
 
+    d = dim(s)
+    S = div(d-1, 2)
     m = zeros(Float64, d, d)
     Sz_vec = S:-1:-S
     for row in 1:d
@@ -115,11 +128,11 @@ function ITensors.op(::OpName"S-", ::SiteType"Spin", s::Index)
     return ITensor(m, s', dag(s))
 
 end
-println("Finished getting the spin S dependent functions", now())
+println("Finished getting the spin S dependent functions ", now())
 flush(stdout)
 
 # Get the initial state
-println("Now getting the initial state", now())
+println("Now getting the initial state ", now())
 flush(stdout)
 N = inputs["N"]
 sites = get_sites(N)
@@ -129,11 +142,11 @@ gauss_law_projector_mpo_no_charges = get_gauge_invariant_subspace_projector_MPO(
 rho = apply(gauss_law_projector_mpo_no_charges, apply(rho, hermitian_conjugate_mpo(gauss_law_projector_mpo_no_charges); cutoff = cutoff); cutoff = cutoff)
 rho /= tr(rho)
 orthogonalize!(rho, 1)
-println("Finished getting the initial state", now())
+println("Finished getting the initial state ", now())
 flush(stdout)
 
 # Evolution to get the thermal state
-println("Now starting the evolution", now())
+println("Now starting the evolution ", now())
 flush(stdout)
 function evolve(rho, inputs, S, results_file)
     
@@ -145,17 +158,19 @@ function evolve(rho, inputs, S, results_file)
     # List to write to file after including the states rho and corresponding beta
     current_beta = 0.0
     beta_list = Float64[current_beta]
-    rho_list = MPO[rho]
     energy_list = ComplexF64[inner(rho, H)]
     save_steps_list = inputs["ssl"]
     counter = 1
     link_dims_list = zeros(Int64, length(save_steps_list) + 1, length(rho)-1)
     link_dims_list[1, :] = linkdims(rho)
-    greens_functions_list = zeros(ComplexF64, length(save_steps_list) + 1, div(N, 2)^2)
-    greens_functions_idxs_list = zeros(Int64, length(save_steps_list) + 1, div(N, 2)^2, 3)
-    greens_functions, idxs = get_greens_function_expectation_values(rho, sites)
-    greens_functions_list[1, :] = greens_functions
-    greens_functions_idxs_list[1, :, :] = idxs
+    greens_fn_flag = parse(Bool, inputs["gff"])
+    if greens_fn_flag
+        greens_functions_list = zeros(ComplexF64, length(save_steps_list) + 1, div(N, 2))
+        greens_functions_distances_list = zeros(Int64, length(save_steps_list) + 1, div(N, 2))
+        greens_functions, idxs = get_greens_function_expectation_values(rho, sites)
+        greens_functions_list[1, :] = greens_functions
+        greens_functions_distances_list[1, :] = idxs
+    end
     counter += 1
 
     # Prepare the gates for the integration scheme: e^(-db*H_o/4)e^(-db*H_e/2)e^(-db*H_o/4) I e^(-db*H_o/4)e^(-db*H_e/2)e^(-db*H_o/4)
@@ -190,14 +205,17 @@ function evolve(rho, inputs, S, results_file)
 
         # Write data to lists
         if step in save_steps_list
-            rho_to_save = apply(hermitian_conjugate_mpo(rho), rho; cutoff = cutoff)
-            push!(rho_list, rho_to_save)
-            push!(beta_list, 2*current_beta)
+            rho_to_save = apply(hermitian_conjugate_mpo(rho), rho; cutoff = cutoff) # fixed positivity and doubles the beta reached
+            rho_to_save /= tr(rho_to_save) # fixes the trace to 1
+            link_dims_list[counter, :] = linkdims(rho_to_save)
+            write(results_file, "rho_$(step)", rho_to_save)
+            push!(beta_list, 2*current_beta) # we save twice the beta because of the first line in this if statement rho(beta) -> rho^dagger(beta/2)*rho(beta/2)
             push!(energy_list, inner(rho_to_save, H))
-            greens_functions, idxs = get_greens_function_expectation_values(rho_to_save, sites)
-            greens_functions_list[counter, :] = greens_functions
-            greens_functions_idxs_list[counter, :, :] = idxs
-            link_dims_list[counter, :] = linkdims(rho)
+            if greens_fn_flag
+                greens_functions, greens_functions_distances = get_greens_function_expectation_values(rho_to_save, sites)
+                greens_functions_list[counter, :] = greens_functions
+                greens_functions_distances_list[counter, :] = greens_functions_distances
+            end
             counter += 1
         end
         println("Step $(step), t = $(time() - t), linkdims = $(linkdims(rho))")
@@ -209,13 +227,12 @@ function evolve(rho, inputs, S, results_file)
     # Write tracked observables to file
     write(results_file, "beta_list", beta_list)
     write(results_file, "link_dims_list", link_dims_list)
-    write(results_file, "greens_functions_list", greens_functions_list)
-    write(results_file, "greens_functions_idxs_list", greens_functions_idxs_list)
-    for (element_idx, element) in rho_list
-        write(results_file, "rho_$(element_idx)", element)
+    if greens_fn_flag
+        write(results_file, "greens_functions_list", greens_functions_list)
+        write(results_file, "greens_functions_distances_list", greens_functions_distances_list)
     end
-
+    
 end
 evolve(rho, inputs, S, results_file)
-println("Finished the evolution", now())
+println("Finished the evolution ", now())
 flush(stdout)
