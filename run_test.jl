@@ -7,7 +7,7 @@ include("utilities.jl")
 ITensors.disable_warn_order()
 
 inputs = Dict()
-inputs["S"] = 1
+inputs["S"] = 1/2
 inputs["x"] = 0.7
 inputs["mg"] = 0.3
 inputs["N"] = 4
@@ -18,11 +18,11 @@ inputs["db"] = 0.01
 
 # Get spin S number and create operators
 S = inputs["S"]
-ITensors.space(::SiteType"Spin") = 2*S+1
+ITensors.space(::SiteType"Spin") = Int(2*S+1)
 function ITensors.op(::OpName"Sz_sp", ::SiteType"Spin", s::Index)
 
     d = dim(s)
-    S = div(d-1, 2) 
+    # S = div(d-1, 2) 
 
     return diagm(S:-1:-S)
 
@@ -31,7 +31,7 @@ end
 function ITensors.op(::OpName"Sz2_sp", ::SiteType"Spin", s::Index)
 
     d = dim(s) 
-    S = div(d-1, 2)
+    # S = div(d-1, 2)
     
     return diagm((S:-1:-S).^2)
 
@@ -40,7 +40,7 @@ end
 function ITensors.op(::OpName"Sz", ::SiteType"Spin", s::Index)
 
     d = dim(s)
-    S = div(d-1, 2)
+    # S = div(d-1, 2)
     tmp = diagm(S:-1:-S)
 
     return ITensor(tmp, s', dag(s))
@@ -50,7 +50,7 @@ end
 function ITensors.op(::OpName"Sz2", ::SiteType"Spin", s::Index)
 
     d = dim(s) 
-    S = div(d-1, 2)
+    # S = div(d-1, 2)
     tmp = diagm((S:-1:-S).^2)
 
     return ITensor(tmp, s', dag(s))
@@ -64,7 +64,7 @@ function ITensors.op(::OpName"S+", ::SiteType"Spin", s::Index)
     """
 
     d = dim(s) 
-    S = div(d-1, 2)
+    # S = div(d-1, 2)
     m = zeros(Float64, d, d)
     Sz_vec = S:-1:-S
     for row in 1:d
@@ -88,7 +88,7 @@ end
 function ITensors.op(::OpName"S-", ::SiteType"Spin", s::Index)
 
     d = dim(s)
-    S = div(d-1, 2)
+    # S = div(d-1, 2)
     m = zeros(Float64, d, d)
     Sz_vec = S:-1:-S
     for row in 1:d
@@ -142,7 +142,7 @@ function evolve(rho, inputs, S)
     double_step_odd_gates = get_odd_gates(sites, 2*a, x, mg, S) # odd/4 (multiply last odd into next time step)
 
     # Define the Hamiltonian to track the energy
-    H = get_Hamiltonian_MPO(x, mg, sites)
+    H = get_Hamiltonian_MPO(x, mg, sites, S)
 
     # Start the evolution
     t = time()
@@ -317,3 +317,13 @@ rho_list, beta_list, link_dims = evolve(rho, inputs, S)
 # println(idxs1)
 
 # ------------------------------------------------------------------------------------------------------------------------
+
+# N = 8
+# sites = get_sites(N)
+# opsum = get_greens_function_opsum(5, 11)
+# println(opsum)
+# g = MPO(opsum, sites)
+
+# ------------------------------------------------------------------------------------------------------------------------
+
+println("Finished.")

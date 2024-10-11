@@ -1,4 +1,4 @@
-function get_Hamiltonian_MPO(x::Real, mg::Real, sites::Vector{Index{Int64}})
+function get_Hamiltonian_MPO(x::Real, mg::Real, sites::Vector{Index{Int64}}, S)
 
     """
     Given a lattice, get the spin S QLM Hamiltonian in MPO representation on it (not including the penalty term for the Gauss law)
@@ -8,7 +8,7 @@ function get_Hamiltonian_MPO(x::Real, mg::Real, sites::Vector{Index{Int64}})
     Nsites = length(sites)
     N = div(Nsites + 1, 2)
     link_dof = dim(sites[2])
-    S = div(link_dof - 1, 2)
+    # S = div(link_dof - 1, 2)
 
     # Prepare the Hamiltonian
     terms = OpSum()
@@ -64,10 +64,16 @@ function get_gauge_invariant_subspace_projector_MPO(electric_field_cutoff, sites
 
     n = length(sites) # this is 2N-1 where N is the number of matter sites, i.e. we dont have a link to the right of the last matter site
 
-    max_link_site_dim = 2 * electric_field_cutoff + 1 # this will be the bond dimension of the MPO
+    max_link_site_dim = Int(2*electric_field_cutoff + 1) # this will be the bond dimension of the MPO
     links = [Index(max_link_site_dim, "Link,l=$j") for j in 1:n-1] # create the links for the MPO
     mpo = MPO(sites)
     Sz_vec = diag(op("Sz", siteinds("Spin", 1)))
+    integer = 0.0 ∈ Sz_vec
+    if integer
+        L0, LN = 0.0, 0.0
+    else
+        L0, LN = 1/2, 1/2
+    end
 
     for site_idx in 1:n
 
@@ -102,7 +108,7 @@ function get_gauge_invariant_subspace_projector_MPO(electric_field_cutoff, sites
                             L_n = Sz_vec[rval] # this will now range from -electric_field_cutoff to +electric_field_cutoff
 
                             # Check for Gauss law
-                            if (L_n == q + external_charges[matter_idx]) && (uval == dval)
+                            if (L_n == L0 + q + external_charges[matter_idx]) && (uval == dval)
                                 mpo[site_idx][u=>uval, d=>dval, r=>rval] = 1 # d => uval makes this a delta function on the physical legs 
                             else
                                 mpo[site_idx][u=>uval, d=>dval, r=>rval] = 0
@@ -138,7 +144,7 @@ function get_gauge_invariant_subspace_projector_MPO(electric_field_cutoff, sites
                             L_nminus1 = Sz_vec[lval] # this will now range from -electric_field_cutoff to +electric_field_cutoff
 
                             # Check for Gauss law
-                            if (-L_nminus1 == q + external_charges[matter_idx]) && (uval == dval)
+                            if (-L_nminus1 == -LN + q + external_charges[matter_idx]) && (uval == dval)
                                 mpo[site_idx][u=>uval, d=>dval, l=>lval] = 1
                             else
                                 mpo[site_idx][u=>uval, d=>dval, l=>lval] = 0
@@ -189,7 +195,7 @@ function get_gauge_invariant_subspace_projector_MPO(electric_field_cutoff, sites
 
             end
 
-            # case of gauge fields
+        # case of gauge fields
         else
 
             u, d, l, r = prime(sites[site_idx]), dag(sites[site_idx]), links[site_idx-1], links[site_idx] # indices up, down and left

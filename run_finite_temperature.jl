@@ -38,20 +38,15 @@ flush(stdout)
 println("Now getting the spin S dependent functions", now())
 flush(stdout)
 S = inputs["S"]
-ITensors.space(::SiteType"Spin") = 2*S+1
+ITensors.space(::SiteType"Spin") = Int(2*S+1)
 function ITensors.op(::OpName"Sz_sp", ::SiteType"Spin", s::Index)
 
-    d = dim(s)
-    S = div(d-1, 2) 
 
     return diagm(S:-1:-S)
 
 end
 
 function ITensors.op(::OpName"Sz2_sp", ::SiteType"Spin", s::Index)
-
-    d = dim(s) 
-    S = div(d-1, 2)
     
     return diagm((S:-1:-S).^2)
 
@@ -59,8 +54,6 @@ end
 
 function ITensors.op(::OpName"Sz", ::SiteType"Spin", s::Index)
 
-    d = dim(s)
-    S = div(d-1, 2)
     tmp = diagm(S:-1:-S)
 
     return ITensor(tmp, s', dag(s))
@@ -69,8 +62,6 @@ end
 
 function ITensors.op(::OpName"Sz2", ::SiteType"Spin", s::Index)
 
-    d = dim(s) 
-    S = div(d-1, 2)
     tmp = diagm((S:-1:-S).^2)
 
     return ITensor(tmp, s', dag(s))
@@ -83,8 +74,6 @@ function ITensors.op(::OpName"S+", ::SiteType"Spin", s::Index)
     See definition: https://easyspin.org/easyspin/documentation/spinoperators.html
     """
 
-    d = dim(s) 
-    S = div(d-1, 2)
     m = zeros(Float64, d, d)
     Sz_vec = S:-1:-S
     for row in 1:d
@@ -107,8 +96,6 @@ end
 
 function ITensors.op(::OpName"S-", ::SiteType"Spin", s::Index)
 
-    d = dim(s)
-    S = div(d-1, 2)
     m = zeros(Float64, d, d)
     Sz_vec = S:-1:-S
     for row in 1:d
